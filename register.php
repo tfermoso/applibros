@@ -7,47 +7,44 @@ $usernameValue = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
-    $email = $_POST['email'] ?? '';
+    $email = trim($_POST['email'] ?? '');
     $usernameValue = $username;
 
-    if ($username === '' || $password === '') {
-        $error = 'Rellena usuario y contraseña.';
+    if ($username === '' || $password === '' || $email === '') {
+        $error = 'Rellena todos los campos.';
     } elseif (strlen($username) < 3) {
         $error = 'El usuario debe tener al menos 3 caracteres.';
     } elseif (strlen($password) < 6) {
         $error = 'La contraseña debe tener al menos 6 caracteres.';
     } else {
         require_once "config.php";
-            require_once __DIR__ . '/includes/functions.php';
-    
-            $conn = conectarBaseDatos();
-    
-            // preparar y ejecutar consulta para comprobar existencia
-            $stmt = $conn->prepare("SELECT * FROM usuario WHERE nombre = ?");
-            $stmt->bind_param("s", $username);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result->num_rows > 0) {
-                $error = 'El usuario ya existe.';
+        require_once __DIR__ . '/includes/functions.php';
+
+        $conn = conectarBaseDatos();
+
+        $stmt = $conn->prepare("SELECT usuario_id FROM usuario WHERE nombre = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $error = 'El usuario ya existe.';
+        } else {
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+
+            $stmt = $conn->prepare("INSERT INTO usuario (nombre, email, password) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $username, $email, $hash);
+
+            if ($stmt->execute()) {
+                $_SESSION['flash'] = 'Usuario registrado correctamente. Ya puedes iniciar sesión.';
+                header('Location: login.php');
+                exit();
             } else {
-                // almacenar hash de contraseña (nunca en texto plano)
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-    
-                // preparar y ejecutar inserción
-                $stmt = $conn->prepare("INSERT INTO usuario (nombre, email, password) VALUES (?, ?, ?)");
-                $stmt->bind_param("sss", $username, $email, $hash);
-    
-                if ($stmt->execute()) {
-                    // opcional: mensaje flash y redirección al login
-                    $_SESSION['flash'] = 'Usuario registrado correctamente. Ya puedes iniciar sesión.';
-                    header('Location: login.php');
-                    exit();
-                } else {
-                    $error = 'Error al registrar el usuario. Inténtalo de nuevo.';
-                }
+                $error = 'Error al registrar el usuario. Inténtalo de nuevo.';
             }
-            $stmt->close();
-            $conn->close();
+        }
+        $stmt->close();
+        $conn->close();
     }
 }
 
@@ -72,18 +69,14 @@ include_once __DIR__ . '/includes/head.php';
                             <label for="username" class="form-label">Usuario</label>
                             <input type="text" id="username" name="username" class="form-control"
                                 value="<?php echo htmlspecialchars($usernameValue); ?>" required autofocus>
-                            <div class="invalid-feedback">Introduce un nombre de usuario válido (mín. 3 caracteres).
-                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" id="email" name="email" class="form-control required autofocus>
-                            
+                            <input type="email" id="email" name="email" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Contraseña</label>
                             <input type="password" id="password" name="password" class="form-control" required>
-                            <div class="invalid-feedback">Introduce una contraseña (mín. 6 caracteres).</div>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center">
@@ -97,5 +90,4 @@ include_once __DIR__ . '/includes/head.php';
     </div>
 </main>
 
-<?php
-include_once __DIR__ . '/includes/footer.php';
+<?php include_once __DIR__ . '/includes/footer.php'; ?>
