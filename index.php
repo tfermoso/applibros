@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 $pageTitle = 'AppLibros - Inicio';
 include_once __DIR__ . '/includes/head.php';
 
