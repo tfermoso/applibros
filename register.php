@@ -7,6 +7,7 @@ $usernameValue = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $email = $_POST['email'] ?? '';
     $usernameValue = $username;
 
     if ($username === '' || $password === '') {
@@ -16,23 +17,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (strlen($password) < 6) {
         $error = 'La contraseña debe tener al menos 6 caracteres.';
     } else {
-        if (!isset($_SESSION['miembros'])) {
-            $_SESSION['miembros'] = [];
-        }
-
-        // comprobar existencia
-        if (isset($_SESSION['miembros'][$username])) {
-            $error = 'El usuario ya existe.';
-        } else {
-            // almacenar hash de contraseña (nunca en texto plano)
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            $_SESSION['miembros'][$username] = $hash;
-
-            // opcional: mensaje flash y redirección al login
-            $_SESSION['flash'] = 'Usuario registrado correctamente. Ya puedes iniciar sesión.';
-            header('Location: login.php');
-            exit();
-        }
+        require_once "config.php";
+            require_once __DIR__ . '/includes/functions.php';
+    
+            $conn = conectarBaseDatos();
+    
+            // preparar y ejecutar consulta para comprobar existencia
+            $stmt = $conn->prepare("SELECT * FROM usuario WHERE nombre = ?");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0) {
+                $error = 'El usuario ya existe.';
+            } else {
+                // almacenar hash de contraseña (nunca en texto plano)
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+    
+                // preparar y ejecutar inserción
+                $stmt = $conn->prepare("INSERT INTO usuario (nombre, email, password) VALUES (?, ?, ?)");
+                $stmt->bind_param("sss", $username, $email, $hash);
+    
+                if ($stmt->execute()) {
+                    // opcional: mensaje flash y redirección al login
+                    $_SESSION['flash'] = 'Usuario registrado correctamente. Ya puedes iniciar sesión.';
+                    header('Location: login.php');
+                    exit();
+                } else {
+                    $error = 'Error al registrar el usuario. Inténtalo de nuevo.';
+                }
+            }
+            $stmt->close();
+            $conn->close();
     }
 }
 
@@ -55,10 +70,16 @@ include_once __DIR__ . '/includes/head.php';
                     <form action="" method="post" class="needs-validation" novalidate>
                         <div class="mb-3">
                             <label for="username" class="form-label">Usuario</label>
-                            <input type="text" id="username" name="username" class="form-control" value="<?php echo htmlspecialchars($usernameValue); ?>" required autofocus>
-                            <div class="invalid-feedback">Introduce un nombre de usuario válido (mín. 3 caracteres).</div>
+                            <input type="text" id="username" name="username" class="form-control"
+                                value="<?php echo htmlspecialchars($usernameValue); ?>" required autofocus>
+                            <div class="invalid-feedback">Introduce un nombre de usuario válido (mín. 3 caracteres).
+                            </div>
                         </div>
-
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" id="email" name="email" class="form-control required autofocus>
+                            
+                        </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Contraseña</label>
                             <input type="password" id="password" name="password" class="form-control" required>
