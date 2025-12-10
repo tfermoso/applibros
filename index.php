@@ -91,24 +91,7 @@ if (isset($_SESSION['libros']) && is_array($_SESSION['libros'])) {
     <?php endif; ?>
 
     <hr class="mt-5">
-    <div class="d-flex justify-content-between align-items-center py-3">
-        <div class="small text-muted">Exporta / importa tu estado de la aplicación (JSON).</div>
-        <div>
-            <!-- Guardar (exportar a server) -->
-            <form action="save_data_server.php" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-secondary me-2">
-                    <i class="fa fa-save me-1" aria-hidden="true"></i> Guardar JSON en servidor
-                </button>
-            </form>
-
-            <!-- Cargar (importar desde server: current.json) -->
-            <form action="import_data.php" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="fa fa-upload me-1" aria-hidden="true"></i> Cargar JSON desde servidor
-                </button>
-            </form>
-        </div>
-    </div>
+    
 </main>
 
 
